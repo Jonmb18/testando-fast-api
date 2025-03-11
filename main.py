@@ -1,6 +1,7 @@
 import os
 import requests
 import psycopg2
+import urllib.parse
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -12,11 +13,20 @@ MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+# 🔹 Parseando a URL do Supabase para formato correto
+parsed_url = urllib.parse.urlparse(SUPABASE_URL)
+
+conn = psycopg2.connect(
+    dbname=parsed_url.path[1:],
+    user=parsed_url.username,
+    password=SUPABASE_KEY,
+    host=parsed_url.hostname,
+    port=parsed_url.port,
+    sslmode="require"
+)
+
 # 🔹 Inicializar o FastAPI
 app = FastAPI()
-
-# 🔹 Conectar ao Supabase
-conn = psycopg2.connect(SUPABASE_URL, sslmode="require")
 
 # 🔹 Estrutura da requisição
 class InputText(BaseModel):
