@@ -6,44 +6,56 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# 🔹 Carregar variáveis de ambiente
+# 🔹 Load environment variables
 load_dotenv()
 
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-# 🔹 Parseando a URL do Supabase para formato correto
+# 🔹 Validate environment variables
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("SUPABASE_URL or SUPABASE_KEY is not set in environment variables.")
+
+# 🔹 Parse Supabase URL
 parsed_url = urllib.parse.urlparse(SUPABASE_URL)
 
-conn = psycopg2.connect(
-    dbname=parsed_url.path[1:],
-    user=parsed_url.username,
-    password=SUPABASE_KEY,
-    host=parsed_url.hostname,
-    port=parsed_url.port,
-    sslmode="require"
-)
+# 🔹 Database connection function
+def get_db_connection():
+    return psycopg2.connect(
+        dbname=parsed_url.path[1:],
+        user=parsed_url.username,
+        password=SUPABASE_KEY,
+        host=parsed_url.hostname,
+        port=parsed_url.port,
+        sslmode="require"
+    )
 
-# 🔹 Inicializar o FastAPI
+# 🔹 Initialize FastAPI
 app = FastAPI()
 
-# 🔹 Estrutura da requisição
+# 🔹 Request model
 class InputText(BaseModel):
     user_id: str
     message: str
 
-# 🔹 Função para salvar conversa no Supabase
+# 🔹 Function to save conversation to Supabase
 def salvar_mensagem(user_id, mensagem, resposta):
+    conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO conversations (user_id, message, response) VALUES (%s, %s, %s)",
-        (user_id, mensagem, resposta)
-    )
-    conn.commit()
-    cur.close()
+    try:
+        cur.execute(
+            "INSERT INTO conversations (user_id, message, response) VALUES (%s, %s, %s)",
+            (user_id, mensagem, resposta)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Database error: {e}")
+    finally:
+        cur.close()
+        conn.close()  # Ensure the connection is closed
 
-# 🔹 Função para conectar-se à API do Mistral AI
+# 🔹 Function to call Mistral AI API
 def get_mistral_response(user_input):
     url = "https://api.mistral.ai/v1/completions"
     headers = {
@@ -56,21 +68,20 @@ def get_mistral_response(user_input):
         "max_tokens": 200,
         "temperature": 0.7
     }
-    response = requests.post(url, headers=headers, json=data)
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        return response.json().get("choices", [{}])[0].get("text", "No response received.")
+    except requests.exceptions.RequestException as e:
+        return f"Erro na API Mistral: {str(e)}"
 
-    if response.status_code == 200:
-        return response.json()["choices"][0]["text"]
-    else:
-        return "Erro ao conectar com a API do Mistral AI."
-
-# 🔹 Criar endpoint da API
+# 🔹 API endpoint
 @app.post("/focusbot")
 async def chatbot(input_text: InputText):
     resposta = get_mistral_response(input_text.message)
     salvar_mensagem(input_text.user_id, input_text.message, resposta)
     return {"resposta": resposta}
 
-# 🔹 Rodar o servidor localmente
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# 🚀 Removed the Uvicorn `if __name__ == "__main__"` block
+# Railway will handle running Uvicorn with the command:
+# uvicorn main:app --host 0.0.0.0 --port $PORT
