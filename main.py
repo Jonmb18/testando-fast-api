@@ -38,6 +38,16 @@ try:
 except ValueError:
     raise ValueError("❌ ERROR: SUPABASE_PORT must be an integer!")
 
+# Debugging logs
+print(f"🔍 DEBUG: Connecting to DB: host={DB_HOST}, user={DB_USER}, dbname={DB_NAME}, port={DB_PORT}")
+
+# 🔹 Get Railway's Outgoing IP
+try:
+    railway_ip = requests.get("https://ifconfig.me").text.strip()
+    print(f"🚀 Railway's Outgoing IP: {railway_ip}")
+except Exception as e:
+    print(f"⚠️ WARNING: Could not retrieve Railway's IP: {e}")
+
 # 🔹 Database Connection Pool with Improved Error Handling
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # seconds
@@ -60,7 +70,8 @@ def create_connection_pool():
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_DELAY)
             else:
-                raise Exception("❌ ERROR: Database connection failed after multiple attempts. Check Supabase settings!")
+                print("❌ ERROR: Database connection failed after multiple attempts. Check Supabase settings!")
+                raise Exception("Database Connection Error: Ensure Supabase allows external access & credentials are correct.")
 
 # Initialize the connection pool
 db_pool = create_connection_pool()
