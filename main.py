@@ -21,12 +21,22 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 # 🔹 Parse Supabase URL
 parsed_url = urllib.parse.urlparse(SUPABASE_URL)
 
-# 🔹 Database connection function
-db_pool = pool.SimpleConnectionPool(1, 10, user="SUPABASE_USER",
-                                    password="SUPABASE_PASSWORD",
-                                    host="SUPABASE_URL",
-                                    port="SUPABASE_PORT",
-                                    database="DB_NAME")
+# Fetch environment variables
+DB_USER = os.environ.get("SUPABASE_USER")
+DB_PASSWORD = os.environ.get("SUPABASE_PASSWORD")
+DB_HOST = os.environ.get("SUPABASE_HOST")
+DB_PORT = int(os.environ.get("SUPABASE_PORT", 5432))  # Convert to integer
+DB_NAME = os.environ.get("SUPABASE_DB")
+
+# Initialize connection pool
+db_pool = pool.SimpleConnectionPool(
+    1, 10, 
+    user=DB_USER,
+    password=DB_PASSWORD,
+    host=DB_HOST,
+    port=DB_PORT,  # Ensure this is an integer
+    database=DB_NAME
+)
 
 def get_db_connection():
     return db_pool.getconn()
