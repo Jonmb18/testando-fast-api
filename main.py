@@ -5,6 +5,7 @@ import urllib.parse
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from psycopg2 import pool
 
 # 🔹 Load environment variables
 load_dotenv()
@@ -21,15 +22,14 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 parsed_url = urllib.parse.urlparse(SUPABASE_URL)
 
 # 🔹 Database connection function
+db_pool = pool.SimpleConnectionPool(1, 10, user="SUPABASE_USER",
+                                    password="SUPABASE_PASSWORD",
+                                    host="SUPABASE_URL",
+                                    port="SUPABASE_PORT",
+                                    database="DB_NAME")
+
 def get_db_connection():
-    return psycopg2.connect(
-        dbname=parsed_url.path[1:],
-        user=parsed_url.username,
-        password=SUPABASE_KEY,
-        host=parsed_url.hostname,
-        port=parsed_url.port,
-        sslmode="require"
-    )
+    return db_pool.getconn()
 
 # 🔹 Initialize FastAPI
 app = FastAPI()
