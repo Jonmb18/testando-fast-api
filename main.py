@@ -38,9 +38,9 @@ try:
 except ValueError:
     raise ValueError("❌ ERROR: SUPABASE_PORT must be an integer!")
 
-# 🔹 Database Connection Pool with Retry Logic
-MAX_RETRIES = 5
-RETRY_DELAY = 3  # seconds
+# 🔹 Database Connection Pool with Improved Error Handling
+MAX_RETRIES = 3
+RETRY_DELAY = 5  # seconds
 
 def create_connection_pool():
     for attempt in range(MAX_RETRIES):
@@ -52,14 +52,15 @@ def create_connection_pool():
                 password=DB_PASSWORD,
                 host=DB_HOST,
                 port=DB_PORT,
-                database=DB_NAME
+                database=DB_NAME,
+                connect_timeout=10  # Ensures quick failure instead of indefinite hanging
             )
         except psycopg2.OperationalError as e:
             print(f"⚠️ Connection attempt {attempt + 1} failed: {e}")
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_DELAY)
             else:
-                raise Exception("❌ ERROR: Database connection failed after multiple attempts.")
+                raise Exception("❌ ERROR: Database connection failed after multiple attempts. Check Supabase settings!")
 
 # Initialize the connection pool
 db_pool = create_connection_pool()
