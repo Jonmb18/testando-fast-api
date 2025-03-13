@@ -21,12 +21,19 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 # 🔹 Parse Supabase URL
 parsed_url = urllib.parse.urlparse(SUPABASE_URL)
 
-# Fetch environment variables
+# Ensure environment variables exist
 DB_USER = os.environ.get("SUPABASE_USER")
 DB_PASSWORD = os.environ.get("SUPABASE_PASSWORD")
 DB_HOST = os.environ.get("SUPABASE_HOST")
-DB_PORT = int(os.environ.get("SUPABASE_PORT", 5432))  # Convert to integer
+DB_PORT = os.environ.get("SUPABASE_PORT")
 DB_NAME = os.environ.get("SUPABASE_DB")
+
+# Validate environment variables
+if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+    raise ValueError("One or more required database environment variables are missing!")
+
+# Convert port to an integer
+DB_PORT = int(DB_PORT)  # Ensures port is a valid integer
 
 # Initialize connection pool
 db_pool = pool.SimpleConnectionPool(
@@ -34,7 +41,7 @@ db_pool = pool.SimpleConnectionPool(
     user=DB_USER,
     password=DB_PASSWORD,
     host=DB_HOST,
-    port=DB_PORT,  # Ensure this is an integer
+    port=DB_PORT,
     database=DB_NAME
 )
 
